@@ -1,1 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII Surfing Game</title>
+    <style>
+        pre {
+            font-family: monospace;
+            font-size: 16px;
+            line-height: 1;
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+    <pre id="gameGrid"></pre>
+    <script>
+        // Game constants
+        const ROWS = 20;          // Grid height
+        const COLS = 80;          // Grid width
+        const MEAN_WATER_LEVEL = 10; // Base water level
+        const A = 3;              // Wave amplitude
+        const WAVELENGTH = 20;    // Wave length in columns
+        const K = 2 * Math.PI / WAVELENGTH; // Wave number
+        const WAVE_SPEED = 10;    // Wave speed in columns per second
+        const OMEGA = K * WAVE_SPEED; // Angular frequency
+        const G = 10;             // Gravity acceleration
+        const SCALE_FACTOR = 1;   // Scaling for wave height
+        const H = 0.1;            // Surfer height above wave
+        const TOLERANCE = 0.5;    // Tolerance for staying on wave
 
+        // Game state variables
+        let t = 0;                // Time
+        let surferX = COLS / 2;   // Surfer's x-position
+        let surferY = MEAN_WATER_LEVEL; // Surfer's y-position
+        let surferVx = 0;         // Surfer's x-velocity
+        let surferVy = 0;         // Surfer's y-velocity
+        let onWave = true;        // Is surfer on the wave?
+
+        // Keyboard input flags
+        let leftPressed = false;
+        let rightPressed = false;
+        let upPressed = false;
+        let downPressed = false;
+
+        // Start game loop (updates every 100ms)
+        setInterval(() => {
+            updateGame();
+            drawGrid();
+        }, 100);
+
+        // Update game state
+        function updateGame() {
+            t += 0.1; // Increment time
+
+            // Update surfer position
+            if (onWave) {
+                const waveHeight = A * Math.sin(K * surferX + OMEGA * t);
+                surferY = MEAN_WATER_LEVEL - Math.floor(waveHeight / SCALE_FACTOR) + H;
+            } else {
+                surferVy += G * 0.1; // Apply gravity
+                surferY += surferVy * 0.1; // Update y-position
+            }
+
+            // Update surfer horizontal movement
+            if (leftPressed) surferVx -= 1;
+            if (rightPressed) surferVx += 1;
+            surferX += surferVx * 0.1;
+
+            // Check if surfer is on the wave
+            const waveHeight = A * Math.sin(K * surferX + OMEGA * t);
+            const waveRow = MEAN_WATER_LEVEL - Math.floor(waveHeight / SCALE_FACTOR);
+            const surferRow = Math.floor(surferY);
+            onWave = Math.abs(surferRow - waveRow) <= TOLERANCE;
+
+            // Handle jumping and ducking
+            if (upPressed && onWave) {
+                surferVy = -5; // Jump upward
+                onWave = false;
+            }
+            if (downPressed && onWave) {
+                surferVy = 5;  // Duck downward
+                onWave = false;
+            }
+        }
+
+        // Draw the game grid
+        function drawGrid() {
+            let grid = '';
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const waveHeight = A * Math.sin(K * col + OMEGA * t);
+                    const waveRow = MEAN_WATER_LEVEL - Math.floor(waveHeight / SCALE_FACTOR);
+                    if (row === waveRow) {
+                        grid += '~'; // Wave surface
+                    } else if (row > waveRow) {
+                        grid += '#'; // Water below wave
+                    } else {
+                        grid += ' '; // Air above wave
+                    }
+                }
+                grid += '\n'; // New line for next row
+            }
+            // Place the surfer (represented by 'O')
+            const surferRow = Math.floor(surferY);
+            const surferCol = Math.floor(surferX);
+            if (surferRow >= 0 && surferRow < ROWS && surferCol >= 0 && surferCol < COLS) {
+                const index = surferRow * (COLS + 1) + surferCol;
+                grid = grid.substring(0, index) + 'O' + grid.substring(index + 1);
+            }
+            document.getElementById('gameGrid').innerText = grid;
+        }
+
+        // Keyboard event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') leftPressed = true;
+            if (e.key === 'ArrowRight') rightPressed = true;
+            if (e.key === 'ArrowUp') upPressed = true;
+            if (e.key === 'ArrowDown') downPressed = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') leftPressed = false;
+            if (e.key === 'ArrowRight') rightPressed = false;
+            if (e.key === 'ArrowUp') upPressed = false;
+            if (e.key === 'ArrowDown') downPressed = false;
+        });
+    </script>
+</body>
+</html>
